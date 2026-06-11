@@ -34,6 +34,14 @@ To run for a specific year:
 ./pipeline.sh 2023
 ```
 
+## How to use with QGIS
+
+The generated GeoParquet file is optimized for modern GIS software.
+
+1. Open **QGIS**.
+2. Drag and drop the `data/processed/storms_{YEAR}.parquet` file into the QGIS canvas.
+3. The storm events will automatically plot as points with the correct CRS (**EPSG:4326**).
+
 ## What I learned
 
 I built a resilient, idempotent bash pipeline for geospatial data. The highlight was implementing **dynamic file discovery** to handle NOAA's changing file suffixes automatically. I also implemented a **robust fallback strategy** for data conversion: if `ogr2ogr` lacks the Parquet driver, the script automatically utilizes **DuckDB via Python** to complete the conversion, ensuring the pipeline runs end-to-end regardless of local environment limitations.
@@ -63,3 +71,4 @@ The script verifies total row counts and previews spatial columns (`BEGIN_LAT`, 
 - GDAL / ogr2ogr
 - GeoParquet
 - DuckDB (for verification & fallback)
+- QGIS (for visualization)
