@@ -38,6 +38,8 @@ To run for a specific year:
 
 I built a fully automated, idempotent bash pipeline for geospatial data. The highlight was implementing **dynamic file discovery**: the script now automatically scrapes NOAA's servers to find the most recent file version for any given year, eliminating manual updates to the URL. I also mastered using `ogr2ogr` to transform raw CSV data directly into GeoParquet, handling CRS and point geometry in a single, efficient command.
 
+*Note: While the pipeline logic is fully automated and verified locally (download and decompression), the final conversion step requires a local GDAL installation (3.5+) built with the Parquet driver.*
+
 ## Stack
 
 - bash
