@@ -19,17 +19,26 @@ set -euo pipefail
 # Year to pull. Override by passing as the first argument.
 YEAR="${1:-2024}"
 
-# NOAA file naming pattern. The "c{CREATED_DATE}" portion changes when NOAA
-# republishes a year. Look at https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/
-# and update CREATED_DATE for the year you want. 
-# Note: We use the most recent CREATED_DATE found via manual inspection of the directory.
-# For 2024: 20260421
-# For 2023: 20260323
-CREATED_DATE="20260421"
-
 BASE_URL="https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles"
-FILE_NAME="StormEvents_details-ftp_v1.0_d${YEAR}_c${CREATED_DATE}.csv.gz"
+
+# -----------------------------------------------------------------------------
+# Step 0: Dynamic File Discovery
+# -----------------------------------------------------------------------------
+# NOAA updates their files periodically, changing the 'c{CREATED_DATE}' suffix.
+# This block automatically finds the most recent file for the target YEAR.
+
+echo "Finding latest file for year ${YEAR} at NOAA..."
+LATEST_FILE=$(curl -s "${BASE_URL}/" | grep -oE "StormEvents_details-ftp_v1.0_d${YEAR}_c[0-9]+\.csv\.gz" | sort -V | tail -n 1)
+
+if [ -z "$LATEST_FILE" ]; then
+    echo "Error: Could not find a 'details' file for year ${YEAR}."
+    echo "Check the directory manually: ${BASE_URL}"
+    exit 1
+fi
+
+FILE_NAME="$LATEST_FILE"
 URL="${BASE_URL}/${FILE_NAME}"
+echo "Found: ${FILE_NAME}"
 
 RAW_DIR="data/raw"
 PROCESSED_DIR="data/processed"
