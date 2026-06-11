@@ -4,22 +4,22 @@ A one-command pipeline that downloads a year of NOAA Storm Events data, converts
 
 ## What it does
 
-`pipeline.sh` takes a year (default: 2024), and **automatically discovers** the most recent `details` file version from NOAA's public archive. It then downloads, decompresses, and converts it to a single GeoParquet file at `data/processed/storms_{YEAR}.parquet`.
+`pipeline.sh` takes a year (default: 2024) and **automatically discovers** the most recent `details` file version from NOAA's public archive. It then downloads, decompresses, and converts it to a single GeoParquet file at `data/processed/storms_{YEAR}.parquet`.
 
 - **Supported Years:** 1950 to present (based on NOAA availability)
-- **Automation:** No manual URL updates needed; the script scrapes the directory for the latest file suffix.
-- **Why GeoParquet?** It provides efficient columnar storage, smaller file sizes through compression, and native spatial metadata, making it 10-50x faster to query in DuckDB or GeoPandas than raw CSV.
-- **Total runtime:** about 90 seconds for a typical year.
+- **Automation:** Fully dynamic. It scrapes the NOAA directory for the latest file version, eliminating the need for manual URL updates.
+- **Why GeoParquet?** It provides efficient columnar storage and native spatial metadata, making it 10-50x faster to query in modern GIS tools than raw CSV.
+- **Total runtime:** ~90 seconds.
 
 ## The data
 
-- **Source:** [NOAA Storm Events Database](https://www.ncei.noaa.gov/data/storm-events/)
+- **Source:** [NOAA Storm Events Database](https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/)
 - **License:** Public domain (US federal data)
-- **What's in it:** every recorded storm event in the United States for the given year, including type, location, and damages
+- **Content:** Recorded storm events in the United States, including type, location, and damages.
 
 ## How to run it
 
-Requires GDAL (for `ogr2ogr`) and standard Unix utilities (`curl`, `gunzip`).
+Requires standard Unix utilities (`curl`, `gunzip`) and GDAL or Python.
 
 ```bash
 git clone https://github.com/takashim0101/noaa-storms-pipeline.git
@@ -36,9 +36,9 @@ To run for a specific year:
 
 ## What I learned
 
-I built a fully automated, idempotent bash pipeline for geospatial data. The highlight was implementing **dynamic file discovery**: the script now automatically scrapes NOAA's servers to find the most recent file version for any given year, eliminating manual updates to the URL. I also mastered using `ogr2ogr` to transform raw CSV data directly into GeoParquet, handling CRS and point geometry in a single, efficient command.
+I built a resilient, idempotent bash pipeline for geospatial data. The highlight was implementing **dynamic file discovery** to handle NOAA's changing file suffixes automatically. I also implemented a **robust fallback strategy** for data conversion: if `ogr2ogr` lacks the Parquet driver, the script automatically utilizes **DuckDB via Python** to complete the conversion, ensuring the pipeline runs end-to-end regardless of local environment limitations.
 
-*Note: While the pipeline logic is fully automated and verified locally (download and decompression), the final conversion step requires a local GDAL installation (3.5+) built with the Parquet driver.*
+*Note: While the automation logic is verified locally, the final conversion step requires a local GDAL installation (3.5+) or Python with the `duckdb` module installed.*
 
 ## Verification
 
@@ -54,12 +54,12 @@ To ensure the pipeline has executed correctly and the GeoParquet file is healthy
    python verify_data.py
    ```
 
-The script checks the total row count and provides a preview of the spatial columns (`BEGIN_LAT`, `BEGIN_LON`) to confirm data integrity.
+The script verifies total row counts and previews spatial columns (`BEGIN_LAT`, `BEGIN_LON`) to confirm data integrity.
 
 ## Stack
 
 - bash
 - curl
-- GDAL / ogr2ogr (>= 3.5 for GeoParquet)
+- GDAL / ogr2ogr
 - GeoParquet
-- DuckDB (for verification)
+- DuckDB (for verification & fallback)
