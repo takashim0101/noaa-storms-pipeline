@@ -4,9 +4,12 @@ A one-command pipeline that downloads a year of NOAA Storm Events data, converts
 
 ## What it does
 
-`pipeline.sh` takes a year (default: 2024), pulls the raw `details` file from NOAA's public archive, decompresses it, and converts it to a single GeoParquet file at `data/processed/storms_{YEAR}.parquet`.
+`pipeline.sh` takes a year (default: 2024), and **automatically discovers** the most recent `details` file version from NOAA's public archive. It then downloads, decompresses, and converts it to a single GeoParquet file at `data/processed/storms_{YEAR}.parquet`.
 
-Total runtime: about 90 seconds for a typical year on a home internet connection.
+- **Supported Years:** 1950 to present (based on NOAA availability)
+- **Automation:** No manual URL updates needed; the script scrapes the directory for the latest file suffix.
+- **Why GeoParquet?** It provides efficient columnar storage, smaller file sizes through compression, and native spatial metadata, making it 10-50x faster to query in DuckDB or GeoPandas than raw CSV.
+- **Total runtime:** about 90 seconds for a typical year.
 
 ## The data
 
@@ -33,7 +36,25 @@ To run for a specific year:
 
 ## What I learned
 
-I learned how to build a robust, idempotent bash pipeline for geospatial data. Specifically, I tackled the challenge of dynamic file naming on NOAA's servers by identifying the correct `CREATED_DATE` patterns. I also practiced using `ogr2ogr` to transform raw CSV data directly into GeoParquet, ensuring proper CRS handling and point geometry creation in a single command.
+I built a fully automated, idempotent bash pipeline for geospatial data. The highlight was implementing **dynamic file discovery**: the script now automatically scrapes NOAA's servers to find the most recent file version for any given year, eliminating manual updates to the URL. I also mastered using `ogr2ogr` to transform raw CSV data directly into GeoParquet, handling CRS and point geometry in a single, efficient command.
+
+*Note: While the pipeline logic is fully automated and verified locally (download and decompression), the final conversion step requires a local GDAL installation (3.5+) built with the Parquet driver.*
+
+## Verification
+
+To ensure the pipeline has executed correctly and the GeoParquet file is healthy, a Python verification script is included.
+
+1. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Run the verification script:
+   ```bash
+   python verify_data.py
+   ```
+
+The script checks the total row count and provides a preview of the spatial columns (`BEGIN_LAT`, `BEGIN_LON`) to confirm data integrity.
 
 ## Stack
 
@@ -41,3 +62,4 @@ I learned how to build a robust, idempotent bash pipeline for geospatial data. S
 - curl
 - GDAL / ogr2ogr (>= 3.5 for GeoParquet)
 - GeoParquet
+- DuckDB (for verification)
