@@ -40,9 +40,26 @@ I built a fully automated, idempotent bash pipeline for geospatial data. The hig
 
 *Note: While the pipeline logic is fully automated and verified locally (download and decompression), the final conversion step requires a local GDAL installation (3.5+) built with the Parquet driver.*
 
+## Verification
+
+To ensure the pipeline has executed correctly and the GeoParquet file is healthy, a Python verification script is included.
+
+1. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Run the verification script:
+   ```bash
+   python verify_data.py
+   ```
+
+The script checks the total row count and provides a preview of the spatial columns (`BEGIN_LAT`, `BEGIN_LON`) to confirm data integrity.
+
 ## Stack
 
 - bash
 - curl
 - GDAL / ogr2ogr (>= 3.5 for GeoParquet)
 - GeoParquet
+- DuckDB (for verification)
