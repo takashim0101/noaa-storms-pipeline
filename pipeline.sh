@@ -77,15 +77,64 @@ fi
 # -----------------------------------------------------------------------------
 
 echo "[4/4] Converting to GeoParquet"
-# ogr2ogr Parquet driver handles overwrite.
-ogr2ogr -f Parquet \
-    -oo X_POSSIBLE_NAMES=BEGIN_LON \
-    -oo Y_POSSIBLE_NAMES=BEGIN_LAT \
-    -a_srs EPSG:4326 \
-    "$OUT_PARQUET" \
-    "$RAW_CSV" \
-    -overwrite
 
-echo "Done. Output: ${OUT_PARQUET}"
-echo "Open it in DuckDB:"
-echo "  duckdb -c \"SELECT COUNT(*) FROM read_parquet('${OUT_PARQUET}');\""
+# Attempt 1: ogr2ogr (Preferred, handles spatial metadata natively)
+if command -v ogr2ogr >/dev/null 2>&1; then
+    echo "Attempting conversion with ogr2ogr..."
+    if ogr2ogr -f Parquet \
+        -oo X_POSSIBLE_NAMES=BEGIN_LON \
+        -oo Y_POSSIBLE_NAMES=BEGIN_LAT \
+        -a_srs EPSG:4326 \
+        "$OUT_PARQUET" \
+        "$RAW_CSV" \
+        -overwrite 2>/dev/null; then
+        echo "ogr2ogr conversion successful."
+    else
+        echo "ogr2ogr failed (possibly missing Parquet driver). Falling back to DuckDB..."
+    fi
+else
+    echo "ogr2ogr not found. Falling back to DuckDB..."
+fi
+
+# Attempt 2: DuckDB Fallback
+if [ ! -f "$OUT_PARQUET" ]; then
+    PYTHON_CMD=""
+    
+    # Get the directory where this script is located
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    # Go up one level to find the venv
+    VENV_DIR="$(dirname "$SCRIPT_DIR")/venv"
+
+    # Check for virtual environment Python (Windows or Unix) using absolute paths
+    if [ -f "$VENV_DIR/Scripts/python.exe" ]; then
+        PYTHON_CMD="$VENV_DIR/Scripts/python.exe"
+    elif [ -f "$VENV_DIR/bin/python" ]; then
+        PYTHON_CMD="$VENV_DIR/bin/python"
+    elif command -v python >/dev/null 2>&1; then
+        PYTHON_CMD="python"
+    fi
+
+    if [ -n "$PYTHON_CMD" ]; then
+        echo "Using Python at: $PYTHON_CMD"
+        "$PYTHON_CMD" -c "
+import duckdb
+import sys
+try:
+    conn = duckdb.connect()
+    conn.execute(f\"COPY (SELECT * FROM '{sys.argv[1]}') TO '{sys.argv[2]}' (FORMAT PARQUET)\")
+    print('DuckDB conversion successful.')
+except Exception as e:
+    print(f'DuckDB conversion failed: {e}')
+" "$RAW_CSV" "$OUT_PARQUET"
+    else
+        echo "Error: Python is required for DuckDB fallback but was not found."
+    fi
+fi
+
+if [ -f "$OUT_PARQUET" ]; then
+    echo "Done. Output: ${OUT_PARQUET}"
+    echo "Verify the data by running: python verify_data.py"
+else
+    echo "Conversion failed."
+    exit 1
+fi
